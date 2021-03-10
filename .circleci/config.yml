@@ -1,0 +1,20 @@
+version: 2.1 # Use version 2.1 to enable Orb usage.
+
+orbs:
+  win: circleci/windows@2.2.0 # The Windows orb give you everything you need to start using the Windows executor.
+jobs:
+  build: # name of your job
+    executor: win/default # executor type
+    steps:
+      - checkout
+      - run: Write-Host 'Installing GCloud SDK'
+      - run: (New-Object Net.WebClient).DownloadFile("https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-330.0.0-windows-x86_64-bundled-python.zip", "$env:Temp\google-cloud-sdk-330.0.0-windows-x86_64-bundled-python.zip")
+      - run: Expand-Archive $env:Temp\google-cloud-sdk-330.0.0-windows-x86_64-bundled-python.zip .
+      - run: .\google-cloud-sdk\install.bat -q
+      - run: |
+          echo $env:GCLOUD_SERVICE_KEY | gcloud auth activate-service-account --key-file=-
+          gcloud --quiet config set project $env:GOOGLE_PROJECT_ID
+          gcloud --quiet config set compute/zone $env:GOOGLE_COMPUTE_ZONE
+      - run: gcloud auth configure-docker
+      - run: docker build -t gcr.io/releaseinf/windowstest .
+      - run: docker push gcr.io/releaseinf/windowstest 
